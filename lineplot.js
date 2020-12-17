@@ -1,4 +1,4 @@
-d3.csv("https://raw.githubusercontent.com/YannLeNorment/visualisation_vendee/main/apivia.csv").then(d => chart(d))
+d3.csv("https://raw.githubusercontent.com/YannLeNorment/visualisation_vendee/main/hugoboss.csv").then(d => chart(d))
 
 function chart(data) {
 
@@ -152,8 +152,4 @@ function chart(data) {
 		}
 	}
 
-	var selectbox = d3.select("#selectbox")
-		.on("change", function() {
-			update(this.value, 750);
-		})
 }

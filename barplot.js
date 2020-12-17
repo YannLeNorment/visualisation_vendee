@@ -1,68 +1,154 @@
-var margin = {top: 20, right: 20, bottom: 70, left: 40},
-    width = 600 - margin.left - margin.right,
-    height = 300 - margin.top - margin.bottom;
+d3.csv("https://raw.githubusercontent.com/YannLeNorment/visualisation_vendee/main/apivia.csv").then(d => chart(d))
 
-// Parse the date / time
-var	parseDate = d3.time.format("%Y-%m").parse;
+function chart(data) {
 
-var x = d3.scale.ordinal().rangeRoundBands([0, width], .05);
+	var keys = data.columns.slice(1);
 
-var y = d3.scale.linear().range([height, 0]);
+    var parseTime = d3.timeParse("%d/%m/%Y %H:%M")	,
+        formatDate = d3.timeFormat("%d/%m/%Y %H:%M"),
+		bisectDate = d3.bisector(d => d.date).left,
+		formatValue = d3.format(",.0f");
 
-var xAxis = d3.svg.axis()
-    .scale(x)
-    .orient("bottom")
-    .tickFormat(d3.time.format("%Y-%m"));
+	data.forEach(function(d) {
+		d.date = parseTime(d.date);
+		return d;
+	})
 
-var yAxis = d3.svg.axis()
-    .scale(y)
-    .orient("left")
-    .ticks(10);
+	var svg = d3.select("#chart"),
+		margin = {top: 15, right: 35, bottom: 15, left: 35},
+		width = +svg.attr("width") - margin.left - margin.right,
+		height = +svg.attr("height") - margin.top - margin.bottom;
 
-var svg = d3.select("body").append("svg")
-    .attr("width", width + margin.left + margin.right)
-    .attr("height", height + margin.top + margin.bottom)
-  .append("g")
-    .attr("transform", 
-          "translate(" + margin.left + "," + margin.top + ")");
+	var x = d3.scaleTime()
+		.rangeRound([margin.left, width - margin.right])
+		.domain(d3.extent(data, d => d.date))
 
-d3.csv("bar-data.csv", function(error, data) {
+	var y = d3.scaleLinear()
+		.rangeRound([height - margin.bottom, margin.top]);
 
-    data.forEach(function(d) {
-        d.date = parseDate(d.date);
-        d.value = +d.value;
-    });
-	
-  x.domain(data.map(function(d) { return d.date; }));
-  y.domain([0, d3.max(data, function(d) { return d.value; })]);
+	var z = d3.scaleOrdinal(d3.schemeCategory10);
 
-  svg.append("g")
-      .attr("class", "x axis")
-      .attr("transform", "translate(0," + height + ")")
-      .call(xAxis)
-    .selectAll("text")
-      .style("text-anchor", "end")
-      .attr("dx", "-.8em")
-      .attr("dy", "-.55em")
-      .attr("transform", "rotate(-90)" );
+	var line = d3.line()
+		.curve(d3.curveCardinal)
+		.x(d => x(d.date))
+		.y(d => y(d.rang));
 
-  svg.append("g")
-      .attr("class", "y axis")
-      .call(yAxis)
-    .append("text")
-      .attr("transform", "rotate(-90)")
-      .attr("y", 6)
-      .attr("dy", ".71em")
-      .style("text-anchor", "end")
-      .text("Value ($)");
+	svg.append("g")
+		.attr("class","x-axis")
+		.attr("transform", "translate(0," + (height - margin.bottom) + ")")
+		.call(d3.axisBottom(x).tickFormat(d3.timeFormat("%d/%m %Hh")));
 
-  svg.selectAll("bar")
-      .data(data)
-    .enter().append("rect")
-      .style("fill", "steelblue")
-      .attr("x", function(d) { return x(d.date); })
-      .attr("width", x.rangeBand())
-      .attr("y", function(d) { return y(d.value); })
-      .attr("height", function(d) { return height - y(d.value); });
+	svg.append("g")
+		.attr("class", "y-axis")
+		.attr("transform", "translate(" + margin.left + ",0)");
 
-});
+	var focus = svg.append("g")
+		.attr("class", "focus")
+		.style("display", "none");
+
+	focus.append("line").attr("class", "lineHover")
+		.style("stroke", "#999")
+		.attr("stroke-width", 1)
+		.style("shape-rendering", "crispEdges")
+		.style("opacity", 0.5)
+		.attr("y1", -height)
+		.attr("y2",0);
+
+	focus.append("text").attr("class", "lineHoverDate")
+		.attr("text-anchor", "middle")
+		.attr("font-size", 12);
+
+	update(0, 0);
+
+	function update(input, speed) {
+
+		var copy = [keys[1]] //Vitesse du bateau
+
+		var cities = copy.map(function(id) {
+			return {
+				id: id,
+				values: data.map(d => {return {date: d.date, rang: +d[id]}})
+			};
+		});
+
+		y.domain([
+			d3.min(cities, d => d3.min(d.values, c => c.rang)),
+			d3.max(cities, d => d3.max(d.values, c => c.rang))
+		]).nice();
+
+		svg.selectAll(".y-axis").transition()
+			.duration(speed)
+			.call(d3.axisLeft(y).tickSize(-width + margin.right + margin.left))
+
+		var city = svg.selectAll(".cities")
+			.data(cities);
+
+		city.exit().remove();
+
+		city.enter().insert("g", ".focus").append("path")
+			.attr("class", "line cities")
+			.style("stroke", d => z(d.id))
+			.merge(city)
+		.transition().duration(speed)
+			.attr("d", d => line(d.values))
+
+		tooltip(copy);
+	}
+
+	function tooltip(copy) {
+		
+		var labels = focus.selectAll(".lineHoverText")
+			.data(copy)
+
+		labels.enter().append("text")
+			.attr("class", "lineHoverText")
+			.style("fill", d => z(d))
+			.attr("text-anchor", "start")
+			.attr("font-size",12)
+			.attr("dy", (_, i) => 1 + i * 2 + "em")
+			.merge(labels);
+
+		var circles = focus.selectAll(".hoverCircle")
+			.data(copy)
+
+		circles.enter().append("circle")
+			.attr("class", "hoverCircle")
+			.style("fill", d => z(d))
+			.attr("r", 2.5)
+			.merge(circles);
+
+		function mousemove() {
+
+			var x0 = x.invert(d3.mouse(this)[0]),
+				i = bisectDate(data, x0, 1),
+				d0 = data[i - 1],
+				d1 = data[i],
+				d = x0 - d0.date > d1.date - x0 ? d1 : d0;
+
+			focus.select(".lineHover")
+				.attr("transform", "translate(" + x(d.date) + "," + height + ")");
+
+			focus.select(".lineHoverDate")
+				.attr("transform", 
+					"translate(" + x(d.date) + "," + (height + margin.bottom) + ")")
+				.text(formatDate(d.date));
+
+			focus.selectAll(".hoverCircle")
+				.attr("cy", e => y(d[e]))
+				.attr("cx", x(d.date));
+
+			focus.selectAll(".lineHoverText")
+				.attr("transform", 
+					"translate(" + (x(d.date)) + "," + height / 2.5 + ")")
+				.text(e => e + " " + "º" + formatValue(d[e]));
+
+			x(d.date) > (width - width / 4) 
+				? focus.selectAll("text.lineHoverText")
+					.attr("text-anchor", "end")
+					.attr("dx", -10)
+				: focus.selectAll("text.lineHoverText")
+					.attr("text-anchor", "start")
+					.attr("dx", 10)
+		}
+	}
+}
