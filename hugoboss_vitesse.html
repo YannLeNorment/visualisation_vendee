@@ -50,11 +50,11 @@ function chart(data) {
 
     var parseTime = d3.timeParse("%d/%m/%Y %H:%M")	,
         formatDate = d3.timeFormat("%d/%m/%Y %H:%M"),
-		bisectDate = d3.bisector(d => d.date).left,
+		bisectDate = d3.bisector(d => d.time).left,
 		formatValue = d3.format(",.0f");
 
 	data.forEach(function(d) {
-		d.date = parseTime(d.date);
+		d.time = parseTime(d.time);
 		return d;
 	})
 
@@ -65,7 +65,7 @@ function chart(data) {
 
 	var x = d3.scaleTime()
 		.rangeRound([margin.left, width - margin.right])
-		.domain(d3.extent(data, d => d.date))
+		.domain(d3.extent(data, d => d.time))
 
 	var y = d3.scaleLinear()
 		.rangeRound([height - margin.bottom, margin.top]);
@@ -73,7 +73,7 @@ function chart(data) {
 	var z = d3.scaleOrdinal(d3.schemeCategory10);
 
 	var line = d3.line()
-		.x(d => x(d.date))
+		.x(d => x(d.time))
 		.y(d => y(d.rang));
 
 	svg.append("g")
@@ -104,13 +104,13 @@ function chart(data) {
 	update(0, 0);
 
 	function update(input, speed) {
-
+		console.log([keys[1]])
 		var copy = [keys[1]] //Vitesse du bateau
 
 		var rank = copy.map(function(id) {
 			return {
 				id: id,
-				values: data.map(d => {return {date: d.date, rang: +d[id]}})
+				values: data.map(d => {return {date: d.time, rang: +d[id]}})
 			};
 		});
 
@@ -169,23 +169,23 @@ function chart(data) {
 				d = x0 - d0.date > d1.date - x0 ? d1 : d0;
 
 			focus.select(".lineHover")
-				.attr("transform", "translate(" + x(d.date) + "," + height + ")");
+				.attr("transform", "translate(" + x(d.time) + "," + height + ")");
 
 			focus.select(".lineHoverDate")
 				.attr("transform", 
-					"translate(" + x(d.date) + "," + (height + margin.bottom) + ")")
-				.text(formatDate(d.date));
+					"translate(" + x(d.time) + "," + (height + margin.bottom) + ")")
+				.text(formatDate(d.time));
 
 			focus.selectAll(".hoverCircle")
 				.attr("cy", e => y(d[e]))
-				.attr("cx", x(d.date));
+				.attr("cx", x(d.time));
 
 			focus.selectAll(".lineHoverText")
 				.attr("transform", 
-					"translate(" + (x(d.date)) + "," + height / 2.5 + ")")
+					"translate(" + (x(d.time)) + "," + height / 2.5 + ")")
 				.text(e => e + " " + "º" + formatValue(d[e]));
 
-			x(d.date) > (width - width / 4) 
+			x(d.time) > (width - width / 4) 
 				? focus.selectAll("text.lineHoverText")
 					.attr("text-anchor", "end")
 					.attr("dx", -10)
