@@ -62,7 +62,7 @@ function chart(data) {
 
 	function update(input, speed) {
 
-		var copy = [keys[1]] //Vitesse du bateau
+		var copy = [keys[3]] //Distance parcourue par jours du bateau
 
 		var cities = copy.map(function(id) {
 			return {
