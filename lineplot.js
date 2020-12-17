@@ -29,6 +29,7 @@ function chart(data) {
 	var z = d3.scaleOrdinal(d3.schemeCategory10);
 
 	var line = d3.line()
+		.curve(d3.curveCardinal)
 		.x(d => x(d.date))
 		.y(d => y(d.rang));
 
@@ -61,9 +62,9 @@ function chart(data) {
 
 	function update(input, speed) {
 
-		var copy = [keys[0]]
+		var copy = [keys[1]] //Vitesse du bateau
 
-		var rang = copy.map(function(id) {
+		var cities = copy.map(function(id) {
 			return {
 				id: id,
 				values: data.map(d => {return {date: d.date, rang: +d[id]}})
@@ -71,21 +72,21 @@ function chart(data) {
 		});
 
 		y.domain([
-			d3.min(rang, d => d3.min(d.values, c => c.rang)),
-			d3.max(rang, d => d3.max(d.values, c => c.rang))
+			d3.min(cities, d => d3.min(d.values, c => c.rang)),
+			d3.max(cities, d => d3.max(d.values, c => c.rang))
 		]).nice();
 
 		svg.selectAll(".y-axis").transition()
 			.duration(speed)
 			.call(d3.axisLeft(y).tickSize(-width + margin.right + margin.left))
 
-		var city = svg.selectAll(".rang")
-			.data(rang);
+		var city = svg.selectAll(".cities")
+			.data(cities);
 
 		city.exit().remove();
 
 		city.enter().insert("g", ".focus").append("path")
-			.attr("class", "line rang")
+			.attr("class", "line cities")
 			.style("stroke", d => z(d.id))
 			.merge(city)
 		.transition().duration(speed)
@@ -150,4 +151,9 @@ function chart(data) {
 					.attr("dx", 10)
 		}
 	}
+
+	var selectbox = d3.select("#selectbox")
+		.on("change", function() {
+			update(this.value, 750);
+		})
 }
